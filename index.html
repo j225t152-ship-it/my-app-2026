@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>コミュ障クエスト - Social Anxiety RPG</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-container {
+            width: 600px;
+            border: 4px solid #fff;
+            padding: 20px;
+            background-color: #000;
+            box-shadow: 0 0 20px rgba(255,255,255,0.2);
+        }
+        #status-bar {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #fff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-size: 1.2em;
+        }
+        #battle-screen {
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: linear-gradient(to bottom, #111, #333);
+            border: 1px solid #444;
+            margin-bottom: 20px;
+        }
+        #enemy-name {
+            font-size: 1.5em;
+            color: #ff4444;
+            margin-bottom: 10px;
+        }
+        #message-log {
+            height: 80px;
+            border: 1px solid #fff;
+            padding: 10px;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        button {
+            padding: 10px;
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        button:hover {
+            background: #fff;
+            color: #000;
+        }
+        button:disabled {
+            border-color: #666;
+            color: #666;
+            cursor: not-allowed;
+        }
+        .hp-bar { color: #55ff55; }
+        .mp-bar { color: #5555ff; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="status-bar">
+        <div>PLAYER: <span id="player-name">コミュ障</span></div>
+        <div>HP(精神): <span id="hp" class="hp-bar">100</span></div>
+        <div>MP(社交力): <span id="mp" class="mp-bar">50</span></div>
+    </div>
+
+    <div id="battle-screen">
+        <div id="enemy-sprite">👾</div>
+        <div id="enemy-name">陽キャ店員が現れた！</div>
+    </div>
+
+    <div id="message-log" id="log">
+        「いらっしゃいませ！こちらおすすめの限定メニューです！！」
+    </div>
+
+    <div class="controls">
+        <button onclick="action('smile')">愛想笑い (MP: 5)</button>
+        <button onclick="action('nod')">頷く (MP: 0)</button>
+        <button onclick="action('ignore')">聞こえないふり (MP: 10)</button>
+        <button onclick="resetGame()" id="reset-btn" style="display:none;">再挑戦する</button>
+    </div>
+</div>
+
+<script>
+    let hp = 100;
+    let mp = 50;
+    const log = document.getElementById('message-log');
+    const hpDisplay = document.getElementById('hp');
+    const mpDisplay = document.getElementById('mp');
+    const enemyNameDisplay = document.getElementById('enemy-name');
+
+    const enemies = [
+        { name: "陽キャ店員", msg: "「いらっしゃいませ！こちら限定メニューです！」", attack: 15 },
+        { name: "ゼミの発表", msg: "「…では、次の方発表お願いします。」", attack: 25 },
+        { name: "教授の急な電話", msg: "（プルルル…プルルル…）", attack: 40 },
+        { name: "市役所の窓口", msg: "「書類が足りませんね、あちらで書き直して。」", attack: 20 }
+    ];
+
+    let currentEnemyIndex = 0;
+
+    function updateLog(text) {
+        log.innerHTML = text;
+    }
+
+    function action(type) {
+        let enemy = enemies[currentEnemyIndex];
+        let damage = 0;
+        let mpCost = 0;
+
+        if (type === 'smile') {
+            mpCost = 5;
+            if (mp >= mpCost) {
+                mp -= mpCost;
+                damage = Math.floor(enemy.attack * 0.5);
+                updateLog("愛想笑いでやり過ごした！ダメージを軽減！");
+            } else {
+                updateLog("社交力が足りない！引きつった笑顔になった…");
+                damage = enemy.attack;
+            }
+        } else if (type === 'nod') {
+            damage = enemy.attack;
+            updateLog("必死に頷いたが、相手の勢いは止まらない！");
+        } else if (type === 'ignore') {
+            mpCost = 10;
+            if (mp >= mpCost) {
+                mp -= mpCost;
+                damage = 0;
+                updateLog("聞こえないふりをした！嵐が過ぎ去るのを待つ…");
+            } else {
+                updateLog("無視しきれなかった！気まずさが襲う！");
+                damage = enemy.attack * 1.5;
+            }
+        }
+
+        hp -= damage;
+        hp = Math.max(0, hp);
+        hpDisplay.innerText = hp;
+        mpDisplay.innerText = mp;
+
+        if (hp <= 0) {
+            updateLog("<span style='color:red'>【GAME OVER】精神が限界を迎えた。布団に潜り込みます。</span>");
+            disableButtons();
+            return;
+        }
+
+        if (damage < enemy.attack || type === 'nod') {
+            setTimeout(nextEnemy, 1500);
+        }
+    }
+
+    function nextEnemy() {
+        currentEnemyIndex++;
+        if (currentEnemyIndex >= enemies.length) {
+            enemyNameDisplay.innerText = "平和な自宅";
+            updateLog("<span style='color:yellow'>【祝】無事に帰宅しました！今日のクエスト完了です。</span>");
+            disableButtons();
+        } else {
+            let enemy = enemies[currentEnemyIndex];
+            enemyNameDisplay.innerText = enemy.name + "が現れた！";
+            updateLog(enemy.msg);
+        }
+    }
+
+    function disableButtons() {
+        document.querySelectorAll('.controls button').forEach(b => b.style.display = 'none');
+        document.getElementById('reset-btn').style.display = 'block';
+    }
+
+    function resetGame() {
+        location.reload();
+    }
+</script>
+
+</body>
+</html>
